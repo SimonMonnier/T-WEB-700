@@ -1,0 +1,64 @@
+# Version of docker-compose
+version: '3'
+services:
+
+  database:
+    container_name: database
+    image: mysql
+    restart: always
+    volumes:
+      - "./init.sql:/docker-entrypoint-initdb.d/init.sql"
+    environment:
+      MYSQL_DATABASE: 'crypto'
+      MYSQL_USER: 'crypto'
+      MYSQL_PASSWORD: 'crypto'
+      MYSQL_ROOT_PASSWORD: 'password'
+    ports:
+      - "3306:3306"
+    healthcheck:
+        test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost"]
+        timeout: 20s
+        retries: 10
+
+  phpmyadmin:
+    container_name: phpmyadin
+    image: phpmyadmin
+    restart: always
+    ports:
+      - 8081:80
+    environment:
+      - PMA_ARBITRARY=1
+      - PMA_HOST=database
+      - PMA_USER=root
+      - PMA_PASSWORD=password
+      - UPLOAD_LIMIT=300M
+    depends_on:
+      database:
+        condition: service_healthy
+
+  back:
+    container_name: backend
+    build:
+      context: ./back
+    ports:
+      - "3000:3000"
+    depends_on:
+      database:
+        condition: service_healthy
+    volumes:
+      - "./back:/back"
+
+  front:
+    build:
+      context: ./front
+    container_name: frontend
+    depends_on:
+      database:
+        condition: service_healthy
+    volumes:
+      - "./front:/front"
+    ports:
+      - "8080:8080"
+
+volumes:
+  mysql_data:
